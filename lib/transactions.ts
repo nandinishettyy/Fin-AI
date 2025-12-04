@@ -1,0 +1,42 @@
+export const transactions = [
+  {
+    id: "TXN001",
+    description: "Medical Equipment Purchase",
+    category: "Equipment",
+    date: "2024-06-15",
+    status: "completed",
+    amount: -45000,
+  },
+  {
+    id: "TXN002",
+    description: "Patient Service Revenue",
+    category: "Income",
+    date: "2024-06-14",
+    status: "completed",
+    amount: 125000,
+  },
+  {
+    id: "TXN003",
+    description: "Staff Salaries",
+    category: "Salaries",
+    date: "2024-06-13",
+    status: "completed",
+    amount: -80000,
+  },
+  {
+    id: "TXN004",
+    description: "Medical Supplies",
+    category: "Supplies",
+    date: "2024-06-12",
+    status: "pending",
+    amount: -22000,
+  },
+  {
+    id: "TXN005",
+    description: "Insurance Reimbursement",
+    category: "Income",
+    date: "2024-06-11",
+    status: "completed",
+    amount: 95000,
+  },
+];
