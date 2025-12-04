@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Fin AI",
-  description: "Finance Transaction Management",
+  title: "Fin-AI",
+  description: "Finance management powered by AI",
 };
 
 export default function RootLayout({
