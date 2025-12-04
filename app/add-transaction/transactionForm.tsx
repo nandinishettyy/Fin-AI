@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { CalendarIcon, Wand2 } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 
 import {
   Form,
@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 // Zod Schema
 const formSchema = z.object({
   notes: z.string().min(3, "Notes must be at least 3 characters"),
@@ -45,8 +47,22 @@ const formSchema = z.object({
   category: z.string().min(1, "Category is required"),
 });
 
+interface ApiSuggestion {
+  category: string;
+  similarity_score: number;
+  sample_notes: string;
+  transaction_id: number;
+}
+
+interface ApiResponse {
+  predicted_category: string;
+  confidence: number;
+  top_matches: ApiSuggestion[];
+}
+
 export default function Home() {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [apiSuggestions, setApiSuggestions] = useState<ApiSuggestion[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -60,8 +76,32 @@ export default function Home() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Form Data:", values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/transactions/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: values.transactionDate.toISOString(),
+          amount: parseFloat(values.amount),
+          category: values.category,
+          notes: values.notes,
+          type_of_transaction: values.transactionType,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create transaction");
+      }
+      form.reset();
+      setShowSuggestions(false);
+      setApiSuggestions([]);
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      alert("Failed to create transaction. Please try again.");
+    }
   }
 
   function getSuggestions() {
@@ -132,8 +172,51 @@ export default function Home() {
     return uniqueSuggestions.slice(0, 3);
   }
 
-  function handleMagicWand() {
-    setShowSuggestions(true);
+  async function handleMagicWand() {
+    try {
+      const { notes, amount, transactionType } = form.getValues();
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/transactions/predict-category`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            notes: notes || "",
+            type_of_transaction: transactionType,
+            amount: parseFloat(amount) || 0,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch suggestions");
+      }
+
+      const data: ApiResponse = await response.json();
+      console.log("API Response:", data);
+
+      // Get unique categories from top matches
+      const uniqueCategories = Array.from(
+        new Set(data.top_matches.map((match) => match.category))
+      ).slice(0, 5);
+
+      // Create suggestion objects with unique categories
+      const topSuggestions = uniqueCategories.map((category) => {
+        const match = data.top_matches.find((m) => m.category === category);
+        return match!;
+      });
+
+      setApiSuggestions(topSuggestions);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error("Error fetching category suggestions:", error);
+      // Fallback to local suggestions if API fails
+      setApiSuggestions([]);
+      setShowSuggestions(true);
+    }
   }
 
   function selectSuggestion(suggestion: string) {
@@ -155,7 +238,14 @@ export default function Home() {
             <FormField
               control={form.control}
               name="transactionDate"
-              render={({ field }) => (
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<
+                  z.infer<typeof formSchema>,
+                  "transactionDate"
+                >;
+              }) => (
                 <FormItem className="flex-1">
                   <FormLabel>Date</FormLabel>
                   <Popover>
@@ -182,7 +272,7 @@ export default function Home() {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) =>
+                        disabled={(date: Date) =>
                           date > new Date() || date < new Date("1900-01-01")
                         }
                       />
@@ -196,7 +286,14 @@ export default function Home() {
             <FormField
               control={form.control}
               name="amount"
-              render={({ field }) => (
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<
+                  z.infer<typeof formSchema>,
+                  "amount"
+                >;
+              }) => (
                 <FormItem className="flex-1">
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
@@ -217,7 +314,14 @@ export default function Home() {
             <FormField
               control={form.control}
               name="department"
-              render={({ field }) => (
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<
+                  z.infer<typeof formSchema>,
+                  "department"
+                >;
+              }) => (
                 <FormItem className="flex-1">
                   <FormLabel>Department</FormLabel>
                   <Select
@@ -246,7 +350,14 @@ export default function Home() {
             <FormField
               control={form.control}
               name="transactionType"
-              render={({ field }) => (
+              render={({
+                field,
+              }: {
+                field: ControllerRenderProps<
+                  z.infer<typeof formSchema>,
+                  "transactionType"
+                >;
+              }) => (
                 <FormItem className="flex-1">
                   <FormLabel>Transaction Type</FormLabel>
                   <Select
@@ -259,8 +370,8 @@ export default function Home() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="income">Debit</SelectItem>
-                      <SelectItem value="expense">Credit</SelectItem>
+                      <SelectItem value="Debit">Debit</SelectItem>
+                      <SelectItem value="Credit">Credit</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -273,7 +384,11 @@ export default function Home() {
           <FormField
             control={form.control}
             name="notes"
-            render={({ field }) => (
+            render={({
+              field,
+            }: {
+              field: ControllerRenderProps<z.infer<typeof formSchema>, "notes">;
+            }) => (
               <FormItem>
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
@@ -289,7 +404,14 @@ export default function Home() {
               <FormField
                 control={form.control}
                 name="category"
-                render={({ field }) => (
+                render={({
+                  field,
+                }: {
+                  field: ControllerRenderProps<
+                    z.infer<typeof formSchema>,
+                    "category"
+                  >;
+                }) => (
                   <FormItem className="flex-1">
                     <FormLabel>Category</FormLabel>
                     <FormControl>
@@ -369,16 +491,29 @@ export default function Home() {
                   Suggested Categories:
                 </p>
                 <div className="flex gap-2 flex-wrap">
-                  {getSuggestions().map((suggestion, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                      onClick={() => selectSuggestion(suggestion)}
-                    >
-                      {suggestion}
-                    </Badge>
-                  ))}
+                  {apiSuggestions.length > 0
+                    ? // Display API suggestions
+                      apiSuggestions.map((suggestion, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                          onClick={() => selectSuggestion(suggestion.category)}
+                        >
+                          {suggestion.category}
+                        </Badge>
+                      ))
+                    : // Fallback to local suggestions
+                      getSuggestions().map((suggestion, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                          onClick={() => selectSuggestion(suggestion)}
+                        >
+                          {suggestion}
+                        </Badge>
+                      ))}
                 </div>
               </div>
             )}
