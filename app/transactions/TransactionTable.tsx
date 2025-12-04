@@ -1,11 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import StatusBadge from "@/components/StatusBadge";
 import { transactions } from "@/lib/transactions";
 import { ArrowDownLeft, ArrowUpRight, Plus } from "lucide-react";
 
 export function TransactionTable() {
+  const router = useRouter();
+
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
       <div className="flex items-center justify-between mb-6">
@@ -17,7 +20,7 @@ export function TransactionTable() {
         </div>
 
         <button
-          onClick={() => (window.location.href = "/add-transaction")}
+          onClick={() => router.push("/add-transaction")}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 
                      text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
         >
