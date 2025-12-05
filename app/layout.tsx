@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
   title: "Fin-AI",
@@ -13,7 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <main className="flex-1 lg:ml-64">{children}</main>
+        </div>
+      </body>
     </html>
   );
 }
